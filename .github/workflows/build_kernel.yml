@@ -38,10 +38,9 @@ jobs:
         run: |
           cd kernel_workspace
           echo "========================================"
-          echo "正在执行一加 SM8750 默认编译指令..."
+          echo "正在执行一加 SM8750 (sun) 官方编译脚本..."
           echo "========================================"
-          # 注意：这是常见的 GKI/Bazel 编译命令。具体命令需要参考你仓库里的 README.md
-          python3 ./kernel_platform/build_with_bazel.py -t sm8750
+          ./kernel_platform/oplus/build/oplus_build_kernel.sh sun perf
           
       - name: 📦 捞取编译战利品 (所有 .ko 驱动模块)
         uses: actions/upload-artifact@v4
