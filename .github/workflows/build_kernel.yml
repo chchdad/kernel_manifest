@@ -1,0 +1,52 @@
+name: 编译一加13内核 (SM8750 15.0.0 原生测试)
+
+on:
+  workflow_dispatch: # 这是一个手动触发开关，写好后你可以随时在 Actions 页面点击运行
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04 # 使用稳定的 Ubuntu 环境
+
+    steps:
+      - name: 🧹 腾出服务器空间 (内核源码极速膨胀，必须清理)
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          
+      - name: 🛠️ 安装核心编译依赖与 Repo 工具
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git curl python3 build-essential bc bison flex libssl-dev libelf-dev
+          mkdir -p ~/bin
+          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          echo "~/bin" >> $GITHUB_PATH
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+      - name: 📥 极速拉取源码 (使用 oneplus_13.xml 15.0.0 清单)
+        run: |
+          mkdir kernel_workspace
+          cd kernel_workspace
+          # 直接用你 Fork 后的仓库地址
+          repo init -u https://github.com/chchdad/kernel_manifest.git -b oneplus/sm8750 -m oneplus_13.xml --depth=1
+          repo sync -c -j8 --force-sync --no-clone-bundle --no-tags
+          
+      - name: 🔨 启动内核与模块编译
+        run: |
+          cd kernel_workspace
+          echo "========================================"
+          echo "正在执行一加 SM8750 默认编译指令..."
+          echo "========================================"
+          # 注意：这是常见的 GKI/Bazel 编译命令。具体命令需要参考你仓库里的 README.md
+          python3 ./kernel_platform/build_with_bazel.py -t sm8750
+          
+      - name: 📦 捞取编译战利品 (所有 .ko 驱动模块)
+        uses: actions/upload-artifact@v4
+        if: success() # 只有编译成功才上传
+        with:
+          name: oplus_kernel_modules
+          path: |
+            kernel_workspace/out/**/*.ko
